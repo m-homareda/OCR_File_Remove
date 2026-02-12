@@ -54,12 +54,14 @@ def main():
         # OCR実行
         raw_text = pytesseract.image_to_string(img, lang='eng')
         
-        # 【Terabox用処理】
-        # 1. ".mp4" という文字列を削除 (これに含まれる '4' が邪魔なため)
-        text_no_ext = raw_text.replace('.mp4', '').replace('.MP4', '')
+        # 1. 拡張子 (.mp4, ,mp4, mp4など) を正規表現で強力に除去
+        text_no_ext = re.sub(r'(?i)mp4', '', raw_text)
         
-        # 2. 一般的な誤読修正 (O -> 0)
+        # 2. 一般的な誤読修正
+        # O -> 0
         cleaned_text = text_no_ext.replace('O', '0').replace('o', '0')
+        # 【追加】 L -> 1, I -> 1 (Fall Guysに大文字のLやIは含まれないため安全)
+        cleaned_text = cleaned_text.replace('L', '1').replace('I', '1')
         
     except Exception as e:
         print(f"OCRエラー: {e}")
@@ -78,14 +80,11 @@ def main():
         ocr_digits = "".join(re.findall(r'\d', line))
         
         # 桁数チェック
-        # 16桁 (年月日時分秒ミリ秒) であること
         if len(ocr_digits) != 16:
-            # Teraboxは表示が綺麗なので、桁数が違う場合は別ファイルかゴミの可能性が高い
-            # 無理に処理せずスキップしてログを出す
             print(f"[解析失敗] 桁数不一致 ({len(ocr_digits)}桁): {line.strip()}")
             continue
 
-        # Trim判定 (Teraboxのファイル名にTrimが含まれる場合も対応)
+        # Trim判定
         is_trim = "Trim" in line or "trim" in line
 
         # 3-8反転候補の生成
